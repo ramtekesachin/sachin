@@ -1,0 +1,14 @@
+# azure-pipelines.yml
+trigger:
+- none  # disables automatic triggers for now
+
+pool:
+  name: Default  # <-- your self-hosted agent pool name
+
+steps:
+- script: |
+    echo "Hello from the self-hosted agent!"
+    echo "Agent name: $(Agent.Name)"
+    echo "Agent OS: $(Agent.OS)"
+    echo "Agent version: $(Agent.Version)"
+  displayName: "Test Self-Hosted Agent"
