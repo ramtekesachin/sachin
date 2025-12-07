@@ -8,7 +8,7 @@ parameters:
   - name: location
     displayName: "Azure Region"
     type: string
-    default: "ersteurope"
+    default: "westeurope"
 
   - name: environment
     displayName: "Environment"
@@ -61,7 +61,7 @@ steps:
   displayName: "Login to Azure"
   inputs:
     azureSubscription: "devopsspn"        # CHANGE THIS
-    scriptType: bash
+    scriptType: powershell
     inlineScript: |
       echo "Logged in to Azure"
 
@@ -72,7 +72,7 @@ steps:
   displayName: "Create Resource Group"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: bash
+    scriptType: powershell
     inlineScript: |
       az group create -n $RESOURCE_GROUP -l $(location)
 
@@ -83,7 +83,7 @@ steps:
   displayName: "Create SFTP Storage Account"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: bash
+    scriptType: powershell
     inlineScript: |
       az storage account create \
         -n $STORAGE \
@@ -101,7 +101,7 @@ steps:
   displayName: "Create Blob Container"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: bash
+    scriptType: powershell
     inlineScript: |
       az storage container create \
         --account-name $STORAGE \
@@ -115,7 +115,7 @@ steps:
   displayName: "Create SFTP User"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: bash
+    scriptType: powershell
     inlineScript: |
       # Extract username from email
       USERNAME=$(echo "$(userEmail)" | cut -d'@' -f1)
