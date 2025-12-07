@@ -1,0 +1,135 @@
+trigger: none
+
+parameters:
+  - name: customerName
+    displayName: "Enter Customer Name (full name)"
+    type: string
+
+  - name: location
+    displayName: "Azure Region"
+    type: string
+    default: "ersteurope"
+
+  - name: environment
+    displayName: "Environment"
+    type: string
+    values:
+      - dev
+      - tst
+      - prd
+      - pprd
+
+  - name: userEmail
+    displayName: "New SFTP User Email"
+    type: string
+
+  - name: permission
+    displayName: "Permission (read/write)"
+    type: string
+    values:
+      - read
+      - write
+
+variables:
+  subscriptionId: "f9ce80b6-846a-461b-a414-50be823f790b"
+
+pool:
+  name: Default   # Change to your agent pool name
+
+steps:
+# ------------------------------
+# Step 1: Prepare Naming
+# ------------------------------
+- bash: |
+    CUSTOMER=$(echo "$(customerName)" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    PREFIX=${CUSTOMER:0:3}
+    STORAGE="st${PREFIX}$(environment)sftp"
+    RESOURCE_GROUP="rg-${PREFIX}-$(environment)-sftp"
+    CONTAINER="${STORAGE}"
+
+    echo "##vso[task.setvariable variable=CUSTOMER]$CUSTOMER"
+    echo "##vso[task.setvariable variable=PREFIX]$PREFIX"
+    echo "##vso[task.setvariable variable=STORAGE]$STORAGE"
+    echo "##vso[task.setvariable variable=RESOURCE_GROUP]$RESOURCE_GROUP"
+    echo "##vso[task.setvariable variable=CONTAINER]$CONTAINER"
+  displayName: "Prepare Naming Convention"
+
+# ------------------------------
+# Step 2: Login to Azure
+# ------------------------------
+- task: AzureCLI@2
+  displayName: "Login to Azure"
+  inputs:
+    azureSubscription: "ramtekesachin"        # CHANGE THIS
+    scriptType: bash
+    inlineScript: |
+      echo "Logged in to Azure"
+
+# ------------------------------
+# Step 3: Create Resource Group
+# ------------------------------
+- task: AzureCLI@2
+  displayName: "Create Resource Group"
+  inputs:
+    azureSubscription: "ramtekesachin"
+    scriptType: bash
+    inlineScript: |
+      az group create -n $RESOURCE_GROUP -l $(location)
+
+# ------------------------------
+# Step 4: Create Storage Account (SFTP Enabled)
+# ------------------------------
+- task: AzureCLI@2
+  displayName: "Create SFTP Storage Account"
+  inputs:
+    azureSubscription: "ramtekesachin"
+    scriptType: bash
+    inlineScript: |
+      az storage account create \
+        -n $STORAGE \
+        -g $RESOURCE_GROUP \
+        -l $(location) \
+        --sku Standard_LRS \
+        --kind StorageV2 \
+        --enable-sftp true \
+        --allow-blob-public-access false
+
+# ------------------------------
+# Step 5: Create Blob Container
+# ------------------------------
+- task: AzureCLI@2
+  displayName: "Create Blob Container"
+  inputs:
+    azureSubscription: "ramtekesachin"
+    scriptType: bash
+    inlineScript: |
+      az storage container create \
+        --account-name $STORAGE \
+        --name $CONTAINER \
+        --auth-mode login
+
+# ------------------------------
+# Step 6: Create SFTP Local User
+# ------------------------------
+- task: AzureCLI@2
+  displayName: "Create SFTP User"
+  inputs:
+    azureSubscription: "ramtekesachin"
+    scriptType: bash
+    inlineScript: |
+      # Extract username from email
+      USERNAME=$(echo "$(userEmail)" | cut -d'@' -f1)
+
+      # Generate random password
+      PASSWORD=$(openssl rand -base64 16)
+
+      az storage account local-user create \
+        --account-name $STORAGE \
+        --username $USERNAME \
+        --home-directory "/$CONTAINER" \
+        --has-password true \
+        --password "$PASSWORD" \
+        --permission-scope permissions=$(permission) resource-name=$CONTAINER service=blob
+
+      echo "##vso[task.setvariable variable=SFTP_USERNAME]$USERNAME"
+      echo "##vso[task.setvariable variable=SFTP_PASSWORD;issecret=true]$PASSWORD"
