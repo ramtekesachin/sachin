@@ -40,7 +40,7 @@ steps:
 # ------------------------------
 # Step 1: Prepare Naming
 # ------------------------------
-- bash: |
+- powershell: |
     CUSTOMER=$(echo "$(customerName)" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
     PREFIX=${CUSTOMER:0:3}
     STORAGE="st${PREFIX}$(environment)sftp"
