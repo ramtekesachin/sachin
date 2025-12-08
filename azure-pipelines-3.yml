@@ -31,10 +31,12 @@ parameters:
       - write
 
 variables:
-  subscriptionId: "f9ce80b6-846a-461b-a414-50be823f790b"
+  subscriptionId: "f9ce80b6-846a-461b-a414-50be823f1223d"
 
 pool:
   name: Default
+
+steps:
 
 # -----------------------------------------------------
 # Step 1: Prepare Naming
@@ -44,7 +46,7 @@ pool:
     $ENVIRONMENT  = "${{ parameters.environment }}"
     $LOCATION     = "${{ parameters.locationa }}"
 
-    # Generate prefix from first 3 chars
+    # Generate prefix from first 3 characters
     $PREFIX = $CUSTOMER.Substring(0,3)
 
     # Build names
@@ -52,7 +54,7 @@ pool:
     $RESOURCE_GROUP = "rg-$PREFIX-$ENVIRONMENT-sftp"
     $CONTAINER      = $STORAGE
 
-    # Pipeline variables
+    # Export variables
     Write-Host "##vso[task.setvariable variable=CUSTOMER]$CUSTOMER"
     Write-Host "##vso[task.setvariable variable=PREFIX]$PREFIX"
     Write-Host "##vso[task.setvariable variable=STORAGE]$STORAGE"
@@ -78,10 +80,10 @@ pool:
 
 
 # -----------------------------------------------------
-# Step 3: Create Storage Account (SFTP Enabled)
+# Step 3: Create SFTP-enabled Storage Account
 # -----------------------------------------------------
 - task: AzureCLI@2
-  displayName: "Create Storage Account With SFTP"
+  displayName: "Create Storage Account (SFTP Enabled)"
   inputs:
     azureSubscription: "devopsspn"
     scriptType: pscore
@@ -115,7 +117,7 @@ pool:
 # Step 5: Create SFTP Local User
 # -----------------------------------------------------
 - task: AzureCLI@2
-  displayName: "Create SFTP Local User"
+  displayName: "Create SFTP User"
   inputs:
     azureSubscription: "devopsspn"
     scriptType: pscore
@@ -123,10 +125,9 @@ pool:
       # Extract username from email
       $USERNAME = "${{ parameters.userEmail }}".Split("@")[0]
 
-      # Generate secure password
+      # Generate random password
       $PASSWORD = [System.Convert]::ToBase64String((1..16 | ForEach-Object { Get-Random -Maximum 256 }))
 
-      # Create SFTP user
       az storage account local-user create `
         --account-name $env:STORAGE `
         --username $USERNAME `
@@ -135,6 +136,6 @@ pool:
         --password "$PASSWORD" `
         --permission-scope permissions=${{ parameters.permission }} resource-name=$env:CONTAINER service=blob
 
-      # Export variables
+      # Expose vars
       Write-Host "##vso[task.setvariable variable=SFTP_USERNAME]$USERNAME"
       Write-Host "##vso[task.setvariable variable=SFTP_PASSWORD;issecret=true]$PASSWORD"
