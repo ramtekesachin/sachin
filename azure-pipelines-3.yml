@@ -106,6 +106,7 @@ steps:
     scriptType: "ps"             # <-- changed
     scriptLocation: "inlineScript"
     inlineScript: |
+      $PERMISSIONS = if ("${{ parameters.permission }}" -eq "read") { "Read" } else { "Read,Write" }
       az storage account local-user create `
         --account-name $env:STORAGE `
         --username "${{ parameters.userEmail }}" `
