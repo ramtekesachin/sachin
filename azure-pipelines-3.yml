@@ -34,24 +34,28 @@ variables:
   subscriptionId: "f9ce80b6-846a-461b-a414-50be823f790b"
 
 pool:
-  name: Default   # Change to your agent pool name
+  name: Default
 
 steps:
 # ------------------------------
 # Step 1: Prepare Naming
 # ------------------------------
 - powershell: |
-    CUSTOMER=$(echo "$(customerName)" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
-    PREFIX=${CUSTOMER:0:3}
-    STORAGE="st${PREFIX}$(environment)sftp"
-    RESOURCE_GROUP="rg-${PREFIX}-$(environment)-sftp"
-    CONTAINER="${STORAGE}"
+    # Prepare customer name
+    $CUSTOMER = "$(customerName)".ToLower().Replace(" ", "").Replace("'", "")
+    $PREFIX   = $CUSTOMER.Substring(0,3)
 
-    echo "##vso[task.setvariable variable=CUSTOMER]$CUSTOMER"
-    echo "##vso[task.setvariable variable=PREFIX]$PREFIX"
-    echo "##vso[task.setvariable variable=STORAGE]$STORAGE"
-    echo "##vso[task.setvariable variable=RESOURCE_GROUP]$RESOURCE_GROUP"
-    echo "##vso[task.setvariable variable=CONTAINER]$CONTAINER"
+    # Compose names
+    $STORAGE         = "st$PREFIX$(environment)sftp"
+    $RESOURCE_GROUP  = "rg-$PREFIX-$(environment)-sftp"
+    $CONTAINER       = $STORAGE
+
+    # Output pipeline variables
+    Write-Host "##vso[task.setvariable variable=CUSTOMER]$CUSTOMER"
+    Write-Host "##vso[task.setvariable variable=PREFIX]$PREFIX"
+    Write-Host "##vso[task.setvariable variable=STORAGE]$STORAGE"
+    Write-Host "##vso[task.setvariable variable=RESOURCE_GROUP]$RESOURCE_GROUP"
+    Write-Host "##vso[task.setvariable variable=CONTAINER]$CONTAINER"
   displayName: "Prepare Naming Convention"
 
 # ------------------------------
@@ -60,10 +64,10 @@ steps:
 - task: AzureCLI@2
   displayName: "Login to Azure"
   inputs:
-    azureSubscription: "devopsspn"        # CHANGE THIS
-    scriptType: powershell
+    azureSubscription: "devopsspn"
+    scriptType: pscore
     inlineScript: |
-      echo "Logged in to Azure"
+      Write-Host "Logged into Azure"
 
 # ------------------------------
 # Step 3: Create Resource Group
@@ -72,9 +76,9 @@ steps:
   displayName: "Create Resource Group"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: powershell
+    scriptType: pscore
     inlineScript: |
-      az group create -n $RESOURCE_GROUP -l $(location)
+      az group create -n $env:RESOURCE_GROUP -l $(location)
 
 # ------------------------------
 # Step 4: Create Storage Account (SFTP Enabled)
@@ -83,15 +87,15 @@ steps:
   displayName: "Create SFTP Storage Account"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: powershell
+    scriptType: pscore
     inlineScript: |
-      az storage account create \
-        -n $STORAGE \
-        -g $RESOURCE_GROUP \
-        -l $(location) \
-        --sku Standard_LRS \
-        --kind StorageV2 \
-        --enable-sftp true \
+      az storage account create `
+        -n $env:STORAGE `
+        -g $env:RESOURCE_GROUP `
+        -l $(location) `
+        --sku Standard_LRS `
+        --kind StorageV2 `
+        --enable-sftp true `
         --allow-blob-public-access false
 
 # ------------------------------
@@ -101,11 +105,11 @@ steps:
   displayName: "Create Blob Container"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: powershell
+    scriptType: pscore
     inlineScript: |
-      az storage container create \
-        --account-name $STORAGE \
-        --name $CONTAINER \
+      az storage container create `
+        --account-name $env:STORAGE `
+        --name $env:CONTAINER `
         --auth-mode login
 
 # ------------------------------
@@ -115,21 +119,19 @@ steps:
   displayName: "Create SFTP User"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: powershell
+    scriptType: pscore
     inlineScript: |
       # Extract username from email
-      USERNAME=$(echo "$(userEmail)" | cut -d'@' -f1)
+      $USERNAME = "$(userEmail)".Split("@")[0]
 
-      # Generate random password
-      PASSWORD=$(openssl rand -base64 16)
+      # Generate secure random password
+      $PASSWORD = [System.Convert]::ToBase64String((1..16 | ForEach-Object {Get-Random -Maximum 256}))
 
-      az storage account local-user create \
-        --account-name $STORAGE \
-        --username $USERNAME \
-        --home-directory "/$CONTAINER" \
-        --has-password true \
-        --password "$PASSWORD" \
-        --permission-scope permissions=$(permission) resource-name=$CONTAINER service=blob
-
-      echo "##vso[task.setvariable variable=SFTP_USERNAME]$USERNAME"
-      echo "##vso[task.setvariable variable=SFTP_PASSWORD;issecret=true]$PASSWORD"
+      # Create SFTP user
+      az storage account local-user create `
+        --account-name $env:STORAGE `
+        --username $USERNAME `
+        --home-directory "/$env:CONTAINER" `
+        --has-password true `
+        --password "$PASSWORD" `
+        --permission-scope permissions=$(permission) resource-na
