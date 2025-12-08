@@ -118,19 +118,5 @@ steps:
       } else {
         $PERMISSIONS = "Read,List,Write,Delete"
       }
+      az storage account local-user create --account-name $env:STORAGE --username "${{ parameters.userEmail }}" --home-directory "/$env:CONTAINER" --has-ssh-password true --has-ssh-key false --has-shared-key false --permission-scope "permissions=$PERMISSIONS service=blob resource-name=$env:CONTAINER"
 
-      bash -c "
-      az storage account local-user create \
-        --account-name $STORAGE \
-        --username '${{ parameters.userEmail }}' \
-        --home-directory '/$CONTAINER' \
-        --has-ssh-password true \
-        --has-ssh-key false \
-        --has-shared-key false \
-        --permission-scope permissions=$PERMISSIONS service=blob resource-name=$CONTAINER
-      "
-
-        --has-ssh-password true \
-        --has-ssh-key false \
-        --has-shared-key false \
-        --permission-scope permissions=$PERMISSIONS service=blob resource-name=$env:CONTAINER
