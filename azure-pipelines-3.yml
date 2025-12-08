@@ -36,24 +36,23 @@ variables:
 pool:
   name: Default
 
-# ------------------------------
+# -----------------------------------------------------
 # Step 1: Prepare Naming
-# ------------------------------
+# -----------------------------------------------------
 - powershell: |
-    # Read parameters
     $CUSTOMER     = "${{ parameters.customerName }}".ToLower().Replace(" ", "").Replace("'", "")
     $ENVIRONMENT  = "${{ parameters.environment }}"
-    $LOCATION     = "${{ parameters.location }}"
+    $LOCATION     = "${{ parameters.locationa }}"
 
-    # Generate prefix
-    $PREFIX       = $CUSTOMER.Substring(0,3)
+    # Generate prefix from first 3 chars
+    $PREFIX = $CUSTOMER.Substring(0,3)
 
-    # Compose resource names
+    # Build names
     $STORAGE        = "st$PREFIX$ENVIRONMENT" + "sftp"
     $RESOURCE_GROUP = "rg-$PREFIX-$ENVIRONMENT-sftp"
     $CONTAINER      = $STORAGE
 
-    # Set pipeline variables
+    # Pipeline variables
     Write-Host "##vso[task.setvariable variable=CUSTOMER]$CUSTOMER"
     Write-Host "##vso[task.setvariable variable=PREFIX]$PREFIX"
     Write-Host "##vso[task.setvariable variable=STORAGE]$STORAGE"
@@ -64,10 +63,11 @@ pool:
   displayName: "Prepare Naming Convention"
 
 
-# ------------------------------
-# Step 3: Create Resource Group
-# ------------------------------
+# -----------------------------------------------------
+# Step 2: Create Resource Group
+# -----------------------------------------------------
 - task: AzureCLI@2
+  displayName: "Create Resource Group"
   inputs:
     azureSubscription: "devopsspn"
     scriptType: pscore
@@ -77,10 +77,11 @@ pool:
         -l $env:LOCATION
 
 
-# ------------------------------
-# Step 4: Create Storage Account (SFTP Enabled)
-# ------------------------------
+# -----------------------------------------------------
+# Step 3: Create Storage Account (SFTP Enabled)
+# -----------------------------------------------------
 - task: AzureCLI@2
+  displayName: "Create Storage Account With SFTP"
   inputs:
     azureSubscription: "devopsspn"
     scriptType: pscore
@@ -95,10 +96,11 @@ pool:
         --allow-blob-public-access false
 
 
-# ------------------------------
-# Step 5: Create Blob Container
-# ------------------------------
+# -----------------------------------------------------
+# Step 4: Create Blob Container
+# -----------------------------------------------------
 - task: AzureCLI@2
+  displayName: "Create Blob Container"
   inputs:
     azureSubscription: "devopsspn"
     scriptType: pscore
@@ -109,10 +111,11 @@ pool:
         --auth-mode login
 
 
-# ------------------------------
-# Step 6: Create SFTP Local User
-# ------------------------------
+# -----------------------------------------------------
+# Step 5: Create SFTP Local User
+# -----------------------------------------------------
 - task: AzureCLI@2
+  displayName: "Create SFTP Local User"
   inputs:
     azureSubscription: "devopsspn"
     scriptType: pscore
@@ -120,8 +123,8 @@ pool:
       # Extract username from email
       $USERNAME = "${{ parameters.userEmail }}".Split("@")[0]
 
-      # Generate a random password
-      $PASSWORD = [System.Convert]::ToBase64String((1..16 | ForEach-Object {Get-Random -Maximum 256}))
+      # Generate secure password
+      $PASSWORD = [System.Convert]::ToBase64String((1..16 | ForEach-Object { Get-Random -Maximum 256 }))
 
       # Create SFTP user
       az storage account local-user create `
@@ -132,7 +135,6 @@ pool:
         --password "$PASSWORD" `
         --permission-scope permissions=${{ parameters.permission }} resource-name=$env:CONTAINER service=blob
 
-      # Set output vars
+      # Export variables
       Write-Host "##vso[task.setvariable variable=SFTP_USERNAME]$USERNAME"
       Write-Host "##vso[task.setvariable variable=SFTP_PASSWORD;issecret=true]$PASSWORD"
-  displayName: "Create SFTP User"
