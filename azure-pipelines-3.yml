@@ -107,9 +107,8 @@ steps:
     inlineScript: |
       # Map simple permission to Azure SFTP permission-scope
       $PERMISSIONS = if ("${{ parameters.permission }}" -eq "read") { "Read,List" } else { "Read,List,Write,Delete" }
-
       az storage account local-user create `
         --account-name $env:STORAGE `
         --username "${{ parameters.userEmail }}" `
         --home-directory "/$env:CONTAINER" `
-        --permission-scope "/$env:CONTAINER:$PERMISSIONS"
+        --permission-scope container=$env:CONTAINER path="/" permissions=$PERMISSIONS
