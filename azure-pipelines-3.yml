@@ -36,7 +36,7 @@ variables:
 pool:
   name: Default
 
-steps:   # <-- THIS WAS MISSING
+steps:
 
 # Step 1: Prepare Naming
 - powershell: |
@@ -62,22 +62,52 @@ steps:   # <-- THIS WAS MISSING
   displayName: "Create Resource Group"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: pscore
-    inlineScript: az group create -n $env:RESOURCE_GROUP -l $env:LOCATION
+    scriptType: "pscore"
+    scriptLocation: "inlineScript"
+    inlineScript: |
+      az group create -n $env:RESOURCE_GROUP -l $env:LOCATION
 
-# Step 3: Create Storage Account
+# Step 3: Create SFTP Storage Account
 - task: AzureCLI@2
   displayName: "Create SFTP Storage Account"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: pscore
+    scriptType: "pscore"
+    scriptLocation: "inlineScript"
     inlineScript: |
-      az storage account create -n $env:STORAGE -g $env:RESOURCE_GROUP -l $env:LOCATION --sku Standard_LRS --kind StorageV2 --enable-sftp true --allow-blob-public-access false
+      az storage account create `
+        -n $env:STORAGE `
+        -g $env:RESOURCE_GROUP `
+        -l $env:LOCATION `
+        --sku Standard_LRS `
+        --kind StorageV2 `
+        --enable-sftp true `
+        --allow-blob-public-access false
 
 # Step 4: Create Blob Container
 - task: AzureCLI@2
   displayName: "Create Blob Container"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: pscore
-    inlineScript: az storage container create --account-name $env:STORAGE --name $env:CONTAINER --auth-mode login
+    scriptType: "pscore"
+    scriptLocation: "inlineScript"
+    inlineScript: |
+      az storage container create `
+        --account-name $env:STORAGE `
+        --name $env:CONTAINER `
+        --auth-mode login
+
+# Step 5: (Optional) Create SFTP User
+- task: AzureCLI@2
+  displayName: "Create SFTP User"
+  inputs:
+    azureSubscription: "devopsspn"
+    scriptType: "pscore"
+    scriptLocation: "inlineScript"
+    inlineScript: |
+      az storage account local-user create `
+        --account-name $env:STORAGE `
+        --username "${{ parameters.userEmail }}" `
+        --home-directory "/$env:CONTAINER" `
+        --permission ${ { parameters.permission } }
+
