@@ -59,4 +59,57 @@ steps:
 
 # Step 2: Create Resource Group
 - task: AzureCLI@2
-  displayName: "Create Resource G
+  displayName: "Create Resource Group"
+  inputs:
+    azureSubscription: "devopsspn"
+    scriptType: "ps"
+    scriptLocation: "inlineScript"
+    inlineScript: |
+      az group create -n $env:RESOURCE_GROUP -l $env:LOCATION
+
+# Step 3: Create Storage Account
+- task: AzureCLI@2
+  displayName: "Create SFTP Storage Account"
+  inputs:
+    azureSubscription: "devopsspn"
+    scriptType: "ps"
+    scriptLocation: "inlineScript"
+    inlineScript: |
+      az storage account create `
+        -n $env:STORAGE `
+        -g $env:RESOURCE_GROUP `
+        -l $env:LOCATION `
+        --sku Standard_LRS `
+        --kind StorageV2 `
+        --enable-hierarchical-namespace true `
+        --allow-blob-public-access false
+
+# Step 4: Create Blob Container
+- task: AzureCLI@2
+  displayName: "Create Blob Container"
+  inputs:
+    azureSubscription: "devopsspn"
+    scriptType: "ps"
+    scriptLocation: "inlineScript"
+    inlineScript: |
+      az storage container create `
+        --account-name $env:STORAGE `
+        --name $env:CONTAINER `
+        --auth-mode login
+
+# Step 5: Create SFTP User
+- task: AzureCLI@2
+  displayName: "Create SFTP User"
+  inputs:
+    azureSubscription: "devopsspn"
+    scriptType: "ps"
+    scriptLocation: "inlineScript"
+    inlineScript: |
+      # Map simple permission to Azure SFTP permission-scope
+      $PERMISSIONS = if ("${{ parameters.permission }}" -eq "read") { "Read,List" } else { "Read,List,Write,Delete" }
+
+      az storage account local-user create `
+        --account-name $env:STORAGE `
+        --username "${{ parameters.userEmail }}" `
+        --home-directory "/$env:CONTAINER" `
+        --permission-scope "/$env:CONTAINER:$PERMISSIONS"
