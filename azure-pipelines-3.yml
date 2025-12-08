@@ -123,4 +123,7 @@ steps:
         --account-name $env:STORAGE `
         --username "${{ parameters.userEmail }}" `
         --home-directory "/$env:CONTAINER" `
-        --permission-scope permissions=$PERMISSIONS resource-name=$env:CONTAINER service=blob
+        --has-ssh-password true `
+        --has-ssh-key false `
+        --has-shared-key false `
+        --permission-scope "permissions=$PERMISSIONS service=blob resource-name=$env:CONTAINER"
