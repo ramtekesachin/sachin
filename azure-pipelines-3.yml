@@ -58,7 +58,7 @@ steps:
   displayName: "Prepare Naming Convention"
 
 # Step 2: Create Resource Group
-- task: AzureCLI@2
+- task: PowerShell@2
   displayName: "Create Resource Group"
   inputs:
     azureSubscription: "devopsspn"
@@ -67,7 +67,7 @@ steps:
       az group create -n $env:RESOURCE_GROUP -l $env:LOCATION
 
 # Step 3: Create Storage Account
-- task: AzureCLI@2
+- task: PowerShell@2
   displayName: "Create SFTP Storage Account"
   inputs:
     azureSubscription: "devopsspn"
@@ -83,7 +83,7 @@ steps:
         --allow-blob-public-access false
 
 # Step 4: Create Blob Container
-- task: AzureCLI@2
+- task: PowerShell@2
   displayName: "Create Blob Container"
   inputs:
     azureSubscription: "devopsspn"
@@ -95,7 +95,7 @@ steps:
         --auth-mode login
 
 # Step 5: Create SFTP User
-- task: AzureCLI@2
+- task: PowerShell@2
   displayName: "Create SFTP User"
   inputs:
     azureSubscription: "devopsspn"
