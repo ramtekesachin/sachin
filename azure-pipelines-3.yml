@@ -82,7 +82,7 @@ steps:
         -l $env:LOCATION `
         --sku Standard_LRS `
         --kind StorageV2 `
-        --enable-sftp true `
+        --enable-hierarchical-namespace true `
         --allow-blob-public-access false
 
 # Step 4: Create Blob Container
