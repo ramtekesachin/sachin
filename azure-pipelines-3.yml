@@ -36,9 +36,7 @@ variables:
 pool:
   name: Default
 
-# -----------------------------------------------------
 # Step 1: Prepare Naming
-# -----------------------------------------------------
 - powershell: |
     $CUSTOMER       = "${{ parameters.customerName }}".ToLower().Replace(" ", "").Replace("'", "")
     $ENVIRONMENT    = "${{ parameters.environment }}"
@@ -57,9 +55,7 @@ pool:
     Write-Host "##vso[task.setvariable variable=ENVIRONMENT]$ENVIRONMENT"
   displayName: "Prepare Naming Convention"
 
-# -----------------------------------------------------
 # Step 2: Create Resource Group
-# -----------------------------------------------------
 - task: AzureCLI@2
   displayName: "Create Resource Group"
   inputs:
@@ -68,9 +64,7 @@ pool:
     inlineScript: |
       az group create -n $env:RESOURCE_GROUP -l $env:LOCATION
 
-# -----------------------------------------------------
-# Step 3: Create Storage Account (SFTP Enabled)
-# -----------------------------------------------------
+# Step 3: Create Storage Account
 - task: AzureCLI@2
   displayName: "Create SFTP Storage Account"
   inputs:
@@ -86,9 +80,7 @@ pool:
         --enable-sftp true `
         --allow-blob-public-access false
 
-# -----------------------------------------------------
 # Step 4: Create Blob Container
-# -----------------------------------------------------
 - task: AzureCLI@2
   displayName: "Create Blob Container"
   inputs:
@@ -100,9 +92,7 @@ pool:
         --name $env:CONTAINER `
         --auth-mode login
 
-# -----------------------------------------------------
 # Step 5: Create SFTP User
-# -----------------------------------------------------
 - task: AzureCLI@2
   displayName: "Create SFTP User"
   inputs:
