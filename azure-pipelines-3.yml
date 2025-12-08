@@ -74,9 +74,7 @@ steps:
     azureSubscription: "devopsspn"
     scriptType: pscore
     inlineScript: |
-      az group create `
-        -n $env:RESOURCE_GROUP `
-        -l $env:LOCATION
+      az group create -n $env:RESOURCE_GROUP -l $env:LOCATION
 
 
 # -----------------------------------------------------
