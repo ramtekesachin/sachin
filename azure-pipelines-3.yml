@@ -44,9 +44,9 @@ steps:
     $ENVIRONMENT    = "${{ parameters.environment }}"
     $LOCATION       = "${{ parameters.locationa }}"
     $PREFIX         = $CUSTOMER.Substring(0,3)
-    $STORAGE        = "st$PREFIX$ENVIRONMENT" + "sftp"
+    $STORAGE        = "st$PREFIX$ENVIRONMENT$(Get-Random -Maximum 9999)"
     $RESOURCE_GROUP = "rg-$PREFIX-$ENVIRONMENT-sftp"
-    $CONTAINER      = $STORAGE
+    $CONTAINER      = "sftp"
 
     Write-Host "##vso[task.setvariable variable=CUSTOMER]$CUSTOMER"
     Write-Host "##vso[task.setvariable variable=PREFIX]$PREFIX"
@@ -62,20 +62,19 @@ steps:
   displayName: "Create Resource Group"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: "ps"             # <-- changed
+    scriptType: "ps"
     scriptLocation: "inlineScript"
     inlineScript: |
       az group create -n $env:RESOURCE_GROUP -l $env:LOCATION
 
-# Step 3: Create SFTP Storage Account
+# Step 3: Create Storage Account
 - task: AzureCLI@2
   displayName: "Create SFTP Storage Account"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: "ps"             # <-- changed
+    scriptType: "ps"
     scriptLocation: "inlineScript"
     inlineScript: |
-      $STORAGE = "$env:STORAGE$(Get-Random -Maximum 9999)"
       az storage account create `
         -n $env:STORAGE `
         -g $env:RESOURCE_GROUP `
@@ -90,7 +89,7 @@ steps:
   displayName: "Create Blob Container"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: "ps"             # <-- changed
+    scriptType: "ps"
     scriptLocation: "inlineScript"
     inlineScript: |
       az storage container create `
@@ -103,12 +102,13 @@ steps:
   displayName: "Create SFTP User"
   inputs:
     azureSubscription: "devopsspn"
-    scriptType: "ps"             # <-- changed
+    scriptType: "ps"
     scriptLocation: "inlineScript"
     inlineScript: |
-      $PERMISSIONS = if ("${{ parameters.permission }}" -eq "read") { "Read" } else { "Read,Write" }
+      $PERMISSIONS = if ("${{ parameters.permission }}" -eq "read") { "Read,List" } else { "Read,List,Write,Delete" }
+
       az storage account local-user create `
         --account-name $env:STORAGE `
         --username "${{ parameters.userEmail }}" `
         --home-directory "/$env:CONTAINER" `
-        --permission "${{ parameters.permission }}"
+        --permission-scope "/$env:CONTAINER:$PERMISSIONS"
