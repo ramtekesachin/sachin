@@ -126,4 +126,10 @@ steps:
         --has-ssh-password true `
         --has-ssh-key false `
         --has-shared-key false `
+        --permission-scope permissions=$PERMISSIONS `
+                             service=blob `
+                             resource-name=$env:CONTAINER
+        --has-ssh-password true `
+        --has-ssh-key false `
+        --has-shared-key false `
         --permission-scope "permissions=$PERMISSIONS service=blob resource-name=$env:CONTAINER"
