@@ -75,6 +75,7 @@ steps:
     scriptType: "ps"             # <-- changed
     scriptLocation: "inlineScript"
     inlineScript: |
+      $STORAGE = "$env:STORAGE$(Get-Random -Maximum 9999)"
       az storage account create `
         -n $env:STORAGE `
         -g $env:RESOURCE_GROUP `
