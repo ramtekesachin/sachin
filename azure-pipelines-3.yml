@@ -42,7 +42,7 @@ steps:
 # ------------------------------
 - powershell: |
     # Prepare customer name
-    $CUSTOMER = "$(customerName)".ToLower().Replace(" ", "").Replace("'", "")
+    $CUSTOMER = "${{ parameters.customerName }}".ToLower().Replace(" ", "").Replace("'", "")
     $PREFIX   = $CUSTOMER.Substring(0,3)
 
     # Compose names
