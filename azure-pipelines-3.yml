@@ -36,6 +36,8 @@ variables:
 pool:
   name: Default
 
+steps:   # <-- THIS WAS MISSING
+
 # Step 1: Prepare Naming
 - powershell: |
     $CUSTOMER       = "${{ parameters.customerName }}".ToLower().Replace(" ", "").Replace("'", "")
@@ -69,7 +71,8 @@ pool:
   inputs:
     azureSubscription: "devopsspn"
     scriptType: pscore
-    inlineScript: az storage account create -n $env:STORAGE -g $env:RESOURCE_GROUP -l $env:LOCATION --sku Standard_LRS --kind StorageV2 --enable-sftp true --allow-blob-public-access false
+    inlineScript: |
+      az storage account create -n $env:STORAGE -g $env:RESOURCE_GROUP -l $env:LOCATION --sku Standard_LRS --kind StorageV2 --enable-sftp true --allow-blob-public-access false
 
 # Step 4: Create Blob Container
 - task: AzureCLI@2
@@ -78,16 +81,3 @@ pool:
     azureSubscription: "devopsspn"
     scriptType: pscore
     inlineScript: az storage container create --account-name $env:STORAGE --name $env:CONTAINER --auth-mode login
-
-# Step 5: Create SFTP User
-- task: AzureCLI@2
-  displayName: "Create SFTP User"
-  inputs:
-    azureSubscription: "devopsspn"
-    scriptType: pscore
-    inlineScript: |
-      $USERNAME = "${{ parameters.userEmail }}".Split("@")[0]
-      $PASSWORD = [System.Convert]::ToBase64String((1..16 | ForEach-Object { Get-Random -Maximum 256 }))
-      az storage account local-user create --account-name $env:STORAGE --username $USERNAME --home-directory "/$env:CONTAINER" --has-password true --password "$PASSWORD" --permission-scope permissions=${{ parameters.permission }} resource-name=$env:CONTAINER service=blob
-      Write-Host "##vso[task.setvariable variable=SFTP_USERNAME]$USERNAME"
-      Write-Host "##vso[task.setvariable variable=SFTP_PASSWORD;issecret=true]$PASSWORD"
