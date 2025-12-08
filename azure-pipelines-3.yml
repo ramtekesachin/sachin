@@ -30,34 +30,35 @@ parameters:
       - read
       - write
 
-variables:
-  subscriptionId: "f9ce80b6-846a-461b-a414-50be823f1223d"
-
 pool:
   name: Default
 
 steps:
 
-# Step 1: Prepare Naming
+# --------------------------------------------------------
+# STEP 1 — Naming Convention
+# --------------------------------------------------------
 - powershell: |
     $CUSTOMER       = "${{ parameters.customerName }}".ToLower().Replace(" ", "").Replace("'", "")
     $ENVIRONMENT    = "${{ parameters.environment }}"
     $LOCATION       = "${{ parameters.locationa }}"
     $PREFIX         = $CUSTOMER.Substring(0,3)
-    $STORAGE        = "st$PREFIX$ENVIRONMENT$(Get-Random -Maximum 9999)"
+
+    # Random is required because storage names must be globally unique
+    $STORAGE        = "st$PREFIX$ENVIRONMENT$((Get-Random -Maximum 9999))"
+    
     $RESOURCE_GROUP = "rg-$PREFIX-$ENVIRONMENT-sftp"
     $CONTAINER      = "sftp"
 
-    Write-Host "##vso[task.setvariable variable=CUSTOMER]$CUSTOMER"
-    Write-Host "##vso[task.setvariable variable=PREFIX]$PREFIX"
     Write-Host "##vso[task.setvariable variable=STORAGE]$STORAGE"
     Write-Host "##vso[task.setvariable variable=RESOURCE_GROUP]$RESOURCE_GROUP"
     Write-Host "##vso[task.setvariable variable=CONTAINER]$CONTAINER"
     Write-Host "##vso[task.setvariable variable=LOCATION]$LOCATION"
-    Write-Host "##vso[task.setvariable variable=ENVIRONMENT]$ENVIRONMENT"
   displayName: "Prepare Naming Convention"
 
-# Step 2: Create Resource Group
+# --------------------------------------------------------
+# STEP 2 — Create Resource Group
+# --------------------------------------------------------
 - task: AzureCLI@2
   displayName: "Create Resource Group"
   inputs:
@@ -67,24 +68,29 @@ steps:
     inlineScript: |
       az group create -n $env:RESOURCE_GROUP -l $env:LOCATION
 
-# Step 3: Create Storage Account
+# --------------------------------------------------------
+# STEP 3 — Create SFTP-Enabled Storage Account (IMPORTANT)
+# --------------------------------------------------------
 - task: AzureCLI@2
-  displayName: "Create SFTP Storage Account"
+  displayName: "Create SFTP Enabled Storage Account"
   inputs:
     azureSubscription: "devopsspn"
     scriptType: "ps"
     scriptLocation: "inlineScript"
     inlineScript: |
       az storage account create `
-        -n $env:STORAGE `
-        -g $env:RESOURCE_GROUP `
-        -l $env:LOCATION `
+        --name $env:STORAGE `
+        --resource-group $env:RESOURCE_GROUP `
+        --location $env:LOCATION `
         --sku Standard_LRS `
         --kind StorageV2 `
         --enable-hierarchical-namespace true `
+        --enable-sftp true `
         --allow-blob-public-access false
 
-# Step 4: Create Blob Container
+# --------------------------------------------------------
+# STEP 4 — Create Blob Container
+# --------------------------------------------------------
 - task: AzureCLI@2
   displayName: "Create Blob Container"
   inputs:
@@ -97,7 +103,9 @@ steps:
         --name $env:CONTAINER `
         --auth-mode login
 
-# Step 5: Create SFTP User
+# --------------------------------------------------------
+# STEP 5 — Create SFTP Local User w/ Correct Permissions
+# --------------------------------------------------------
 - task: AzureCLI@2
   displayName: "Create SFTP User"
   inputs:
@@ -105,10 +113,14 @@ steps:
     scriptType: "ps"
     scriptLocation: "inlineScript"
     inlineScript: |
-      # Map simple permission to Azure SFTP permission-scope
-      $PERMISSIONS = if ("${{ parameters.permission }}" -eq "read") { "Read,List" } else { "Read,List,Write,Delete" }
+      if ("${{ parameters.permission }}" -eq "read") {
+        $PERMISSIONS = "Read,List"
+      } else {
+        $PERMISSIONS = "Read,List,Write,Delete"
+      }
+
       az storage account local-user create `
         --account-name $env:STORAGE `
         --username "${{ parameters.userEmail }}" `
         --home-directory "/$env:CONTAINER" `
-        --permission-scope container=$env:CONTAINER path="/" permissions=$PERMISSIONS
+        --permission-scope permissions=$PERMISSIONS resource-name=$env:CONTAINER service=blob
